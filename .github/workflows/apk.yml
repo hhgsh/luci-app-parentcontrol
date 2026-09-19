@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      # 必不可少：拉取本仓库的代码到本地
       - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
@@ -47,31 +48,24 @@ jobs:
       - name: Configure Package
         working-directory: sdk
         run: |
-          # 禁用全部默认包与全量 KMODS 构建
           echo "CONFIG_ALL=n" > .config
-          echo "CONFIG_ALL_KMODS=n" >> .config
-          echo "CONFIG_ALL_NONSHARED=n" >> .config
-          
-          # 仅勾选需要的两个应用包
           echo "CONFIG_PACKAGE_luci-app-parentcontrol=m" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-parentcontrol-zh-cn=m" >> .config
-          
           make defconfig
-          
-          # 强制移除 SDK 内部无关的内核软链接，防止它递归编译全套 kmod
-          rm -rf package/kernel/mac80211 package/kernel/mt76
+
+      - name: Compile APK Package
+        working-directory: sdk
+        run: |
+          make package/luci-app-parentcontrol/compile V=s -j$(nproc) || make package/luci-app-parentcontrol/compile V=s -j1
+
       - name: Organize Artifacts
         run: |
           mkdir -p output
-          find sdk/bin/ -type f -name "luci-app-parentcontrol_*.apk" -exec cp {} output/ \;
-          find sdk/bin/ -type f -name "luci-i18n-parentcontrol-zh-cn_*.apk" -exec cp {} output/ \;
-          
-          echo "APK_COUNT=$(ls -1 output/*.apk 2>/dev/null | wc -l)" >> $GITHUB_ENV
-          echo "=== 提取到的目标文件 ==="
+          find sdk/bin/ -type f -name "*parentcontrol*.apk" -exec cp -v {} output/ \;
+          echo "=== 提取到的文件清单 ==="
           ls -la output/
 
-      # 关键修改：生成不重复的动态 Release Tag
-      - name: Generate Dynamic Tag Name
+      - name: Generate Release Tag
         id: tag
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
@@ -85,6 +79,6 @@ jobs:
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: "LuCI ParentControl APK (${{ env.RELEASE_TAG }})"
-          files: output/*.apk
+          files: output/*parentcontrol*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
