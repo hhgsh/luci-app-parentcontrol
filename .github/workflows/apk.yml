@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Parentcontrol 25.12 APK
 
 on:
   push:
@@ -44,22 +44,18 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      # 精简关键点：仅开启必需选项，关闭全量编译选项
       - name: Configure Package
         working-directory: sdk
         run: |
           echo "CONFIG_ALL=n" > .config
-          echo "CONFIG_ALL_KMODS=n" >> .config
           echo "CONFIG_PACKAGE_luci-app-parentcontrol=m" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-parentcontrol-zh-cn=m" >> .config
           make defconfig
 
-      # 关键修改：清理默认的 kernel feeds，防止自动拉起全部 kmod
       - name: Compile APK Package
         working-directory: sdk
         run: |
-          # 仅编译 target 应用，跳过全局 kmod 递归构建
-          make package/luci-app-parentcontrol/compile V=s IGNORE_ERRORS=m -j$(nproc)
+          make package/luci-app-parentcontrol/compile V=s -j$(nproc) || make package/luci-app-parentcontrol/compile V=s -j1
 
       - name: Organize Artifacts
         run: |
@@ -68,15 +64,25 @@ jobs:
           find sdk/bin/ -type f -name "luci-i18n-parentcontrol-zh-cn_*.apk" -exec cp {} output/ \;
           
           echo "APK_COUNT=$(ls -1 output/*.apk 2>/dev/null | wc -l)" >> $GITHUB_ENV
-          echo "=== 提取到的目标文件清单 ==="
+          echo "=== 提取到的目标文件 ==="
           ls -la output/
+
+      # 关键修改：生成不重复的动态 Release Tag
+      - name: Generate Dynamic Tag Name
+        id: tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "RELEASE_TAG=${github.ref_name}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=v25.12-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+          fi
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
         if: env.APK_COUNT != '0'
         with:
-          tag_name: ${{ github.ref_name || 'main' }}
-          name: "LuCI ParentControl APK Version"
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "LuCI ParentControl APK (${{ env.RELEASE_TAG }})"
           files: output/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
