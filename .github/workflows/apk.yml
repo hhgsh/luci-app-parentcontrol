@@ -47,16 +47,19 @@ jobs:
       - name: Configure Package
         working-directory: sdk
         run: |
+          # 禁用全部默认包与全量 KMODS 构建
           echo "CONFIG_ALL=n" > .config
+          echo "CONFIG_ALL_KMODS=n" >> .config
+          echo "CONFIG_ALL_NONSHARED=n" >> .config
+          
+          # 仅勾选需要的两个应用包
           echo "CONFIG_PACKAGE_luci-app-parentcontrol=m" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-parentcontrol-zh-cn=m" >> .config
+          
           make defconfig
-
-      - name: Compile APK Package
-        working-directory: sdk
-        run: |
-          make package/luci-app-parentcontrol/compile V=s -j$(nproc) || make package/luci-app-parentcontrol/compile V=s -j1
-
+          
+          # 强制移除 SDK 内部无关的内核软链接，防止它递归编译全套 kmod
+          rm -rf package/kernel/mac80211 package/kernel/mt76
       - name: Organize Artifacts
         run: |
           mkdir -p output
