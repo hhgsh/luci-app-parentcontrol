@@ -48,6 +48,7 @@ jobs:
         working-directory: sdk
         run: |
           echo "CONFIG_PACKAGE_luci-app-parentcontrol=m" > .config
+          echo "CONFIG_PACKAGE_luci-i18n-parentcontrol-zh-cn=m" >> .config
           make defconfig
 
       - name: Compile APK Package
@@ -58,10 +59,10 @@ jobs:
       - name: Organize Artifacts
         run: |
           mkdir -p output
-          # 仅精准匹配并复制包含 luci-app-parentcontrol 的 apk 文件
-          find sdk/bin/ -type f -name "luci-app-parentcontrol*.apk" -exec cp {} output/ \;
+          # 仅提取主插件和简体中文语言包的 apk
+          find sdk/bin/ -type f \( -name "luci-app-parentcontrol*.apk" -o -name "luci-i18n-parentcontrol-zh-cn*.apk" \) -exec cp {} output/ \;
           echo "APK_COUNT=$(ls -1 output/*.apk 2>/dev/null | wc -l)" >> $GITHUB_ENV
-          echo "筛选出的上传文件如下："
+          echo "准备上传的文件列表："
           ls -la output/
 
       - name: Create Release and Upload APK
@@ -70,6 +71,6 @@ jobs:
         with:
           tag_name: ${{ github.ref_name || 'v1.0.0' }}
           name: "LuCI ParentControl APK Version"
-          files: output/luci-app-parentcontrol*.apk
+          files: output/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
