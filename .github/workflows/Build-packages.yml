@@ -13,8 +13,6 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - aarch64_generic
-          - mipsel_24kc
           - x86_64
 
     steps:
