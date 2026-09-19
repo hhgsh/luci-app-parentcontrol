@@ -82,7 +82,6 @@ jobs:
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
-        if: env.APK_COUNT != '0'
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: "LuCI ParentControl APK (${{ env.RELEASE_TAG }})"
