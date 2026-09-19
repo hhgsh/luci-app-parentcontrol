@@ -1,4 +1,4 @@
-name: Build Parentcontrol 25.12 APK
+name: Build APK
 
 on:
   push:
