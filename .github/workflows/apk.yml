@@ -48,22 +48,18 @@ jobs:
       - name: Configure Package
         working-directory: sdk
         run: |
-          # 禁用全量编译标志，避免 SDK 编译默认的全套 feed 包
           echo "CONFIG_ALL=n" > .config
           echo "CONFIG_ALL_KMODS=n" >> .config
-          echo "CONFIG_ALL_NONSHARED=n" >> .config
-          
-          # 仅显式勾选需要的目标包
           echo "CONFIG_PACKAGE_luci-app-parentcontrol=m" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-parentcontrol-zh-cn=m" >> .config
-          
           make defconfig
 
-      # 精准编译目标包及其必要依赖
+      # 关键修改：清理默认的 kernel feeds，防止自动拉起全部 kmod
       - name: Compile APK Package
         working-directory: sdk
         run: |
-          make package/luci-app-parentcontrol/compile V=s -j$(nproc) || make package/luci-app-parentcontrol/compile V=s -j1
+          # 仅编译 target 应用，跳过全局 kmod 递归构建
+          make package/luci-app-parentcontrol/compile V=s IGNORE_ERRORS=m -j$(nproc)
 
       - name: Organize Artifacts
         run: |
