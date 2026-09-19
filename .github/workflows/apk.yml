@@ -59,17 +59,19 @@ jobs:
       - name: Organize Artifacts
         run: |
           mkdir -p output
-          # 仅提取主插件和简体中文语言包的 apk
-          find sdk/bin/ -type f \( -name "luci-app-parentcontrol*.apk" -o -name "luci-i18n-parentcontrol-zh-cn*.apk" \) -exec cp {} output/ \;
+          # 放弃复杂 find 语法，使用两条直接复制命令只提取这两个目标文件：
+          find sdk/bin/ -type f -name "luci-app-parentcontrol_*.apk" -exec cp {} output/ \;
+          find sdk/bin/ -type f -name "luci-i18n-parentcontrol-zh-cn_*.apk" -exec cp {} output/ \;
+          
           echo "APK_COUNT=$(ls -1 output/*.apk 2>/dev/null | wc -l)" >> $GITHUB_ENV
-          echo "准备上传的文件列表："
+          echo "=== 过滤后提取到的文件列表如下（必须只有2个） ==="
           ls -la output/
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
         if: env.APK_COUNT != '0'
         with:
-          tag_name: ${{ github.ref_name || 'v1.0.0' }}
+          tag_name: ${{ github.ref_name || 'main' }}
           name: "LuCI ParentControl APK Version"
           files: output/*.apk
         env:
