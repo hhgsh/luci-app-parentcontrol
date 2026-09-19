@@ -23,7 +23,7 @@ jobs:
       - name: Build packages with OpenWrt SDK
         uses: sbwml/openwrt-gh-action-sdk@main
         env:
-          ARCH: x86_64-25.12
+          ARCH: x86_64-snapshots  # 或 x86_64-24.10
           PACKAGES: luci-app-parentcontrol
           NO_EXTRA_FEEDS: '1'
 
