@@ -44,13 +44,22 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      # 精简关键点：仅开启必需选项，关闭全量编译选项
       - name: Configure Package
         working-directory: sdk
         run: |
-          echo "CONFIG_PACKAGE_luci-app-parentcontrol=m" > .config
+          # 禁用全量编译标志，避免 SDK 编译默认的全套 feed 包
+          echo "CONFIG_ALL=n" > .config
+          echo "CONFIG_ALL_KMODS=n" >> .config
+          echo "CONFIG_ALL_NONSHARED=n" >> .config
+          
+          # 仅显式勾选需要的目标包
+          echo "CONFIG_PACKAGE_luci-app-parentcontrol=m" >> .config
           echo "CONFIG_PACKAGE_luci-i18n-parentcontrol-zh-cn=m" >> .config
+          
           make defconfig
 
+      # 精准编译目标包及其必要依赖
       - name: Compile APK Package
         working-directory: sdk
         run: |
@@ -59,12 +68,11 @@ jobs:
       - name: Organize Artifacts
         run: |
           mkdir -p output
-          # 放弃复杂 find 语法，使用两条直接复制命令只提取这两个目标文件：
           find sdk/bin/ -type f -name "luci-app-parentcontrol_*.apk" -exec cp {} output/ \;
           find sdk/bin/ -type f -name "luci-i18n-parentcontrol-zh-cn_*.apk" -exec cp {} output/ \;
           
           echo "APK_COUNT=$(ls -1 output/*.apk 2>/dev/null | wc -l)" >> $GITHUB_ENV
-          echo "=== 过滤后提取到的文件列表如下（必须只有2个） ==="
+          echo "=== 提取到的目标文件清单 ==="
           ls -la output/
 
       - name: Create Release and Upload APK
