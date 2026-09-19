@@ -2,10 +2,14 @@ name: Build OpenWrt 25.12 APK Package
 
 on:
   push:
-    branches:
-      - main
-      - master
+    tags:
+      - 'v*' # 当推送以 v 开头的 tag（如 v1.0.0）时自动触发并发布 Release
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release Tag 名称'
+        required: false
+        default: 'v1.0.0'
 
 jobs:
   build:
@@ -19,18 +23,14 @@ jobs:
       - name: Build packages with OpenWrt SDK
         uses: sbwml/openwrt-gh-action-sdk@main
         env:
-          # 指定支持 25.12 及 apk 格式的目标架构和版本
           ARCH: x86_64-25.12
-          # 指定要编译的包名（对应 Makefile 中的 PKG_NAME）
           PACKAGES: luci-app-parentcontrol
-          # 不加载默认的额外 feeds（根据需求填 0 或 1）
           NO_EXTRA_FEEDS: '1'
 
       - name: Organize Artifacts
         id: organize
         run: |
           mkdir -p ./release
-          # 查找 SDK 编译出的所有 .apk 文件并移动至 release 目录
           find bin/packages/ -type f -name "*.apk" -exec cp {} ./release/ \;
           echo "APK_COUNT=$(ls -1 ./release/*.apk 2>/dev/null | wc -l)" >> $GITHUB_ENV
 
@@ -40,3 +40,16 @@ jobs:
         with:
           name: openwrt-25.12-apk-packages
           path: ./release/*.apk
+
+      # 新增：上传打包产物至 GitHub Releases
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: env.APK_COUNT != '0'
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          name: Release ${{ github.event.inputs.release_tag || github.ref_name }}
+          draft: false
+          prerelease: false
+          files: ./release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
